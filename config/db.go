@@ -32,5 +32,23 @@ func ConnectDB() {
 	}
 
 	DB = db
+	ensureSchema()
 	fmt.Println("✅ DB Connected")
+}
+
+func ensureSchema() {
+	if DB == nil {
+		return
+	}
+
+	queries := []string{
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_user_id INT`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS users_auth_user_id_unique_idx ON users(auth_user_id) WHERE auth_user_id IS NOT NULL`,
+	}
+
+	for _, query := range queries {
+		if _, err := DB.Exec(query); err != nil {
+			log.Printf("schema migration warning: %v", err)
+		}
+	}
 }
