@@ -28,10 +28,15 @@ func GetMeals(c *gin.Context) {
 	rows, err := config.DB.Query(`
 		SELECT m.id, m.name, m.meal_type
 		FROM meals m
+		LEFT JOIN meal_bmi_categories mbc ON mbc.meal_id = m.id
 		WHERE m.diet_type = $1
-		AND m.id IN (
-			SELECT meal_id FROM meal_bmi_categories WHERE bmi_category = $2
+		AND (
+			mbc.bmi_category = $2
+			OR NOT EXISTS (
+				SELECT 1 FROM meal_bmi_categories x WHERE x.meal_id = m.id
+			)
 		)
+		GROUP BY m.id, m.name, m.meal_type
 	`, diet, bmi)
 
 	if err != nil {
@@ -75,7 +80,10 @@ func GetMeals(c *gin.Context) {
 		`, mealID).Scan(&calories, &protein, &carbs, &fats)
 
 		if err != nil {
-			continue
+			calories = 0
+			protein = 0
+			carbs = 0
+			fats = 0
 		}
 
 		// 🧂 Ingredients
